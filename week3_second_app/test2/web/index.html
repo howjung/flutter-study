@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="test2">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>test2</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #08090d; }
+    #camera-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    #gesture-flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle, rgba(255,235,150,.95), rgba(255,255,255,.2) 25%, transparent 65%); z-index: 20; }
+    #gesture-flash.active { animation: impact 700ms cubic-bezier(.2,.8,.2,1); }
+    #gesture-ring { position: fixed; left: 50%; top: 50%; width: 12vmin; height: 12vmin; border: 3px solid #f3d77b; border-radius: 50%; transform: translate(-50%, -50%) scale(.2); opacity: 0; pointer-events: none; z-index: 21; }
+    #gesture-ring.active { animation: ring 700ms cubic-bezier(.16,1,.3,1); }
+    @keyframes impact { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes ring { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(9); } }
+  </style>
+</head>
+<body>
+  <div id="gesture-flash"></div>
+  <div id="gesture-ring"></div>
+  <script type="module">
+    import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22';
+
+    const flash = document.querySelector('#gesture-flash');
+    const ring = document.querySelector('#gesture-ring');
+    let lastVideoTime = -1;
+    let lastTrigger = 0;
+    let handLandmarker;
+
+    function distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function crossed(landmarks) {
+      const indexTip = landmarks[8];
+      const middleTip = landmarks[12];
+      const indexBase = landmarks[5];
+      const middleBase = landmarks[9];
+      const indexDirection = indexTip.x - indexBase.x;
+      const middleDirection = middleTip.x - middleBase.x;
+      return distance(indexTip, middleTip) < .16 && indexDirection * middleDirection < 0;
+    }
+
+    function impact() {
+      const now = performance.now();
+      if (now - lastTrigger < 1100) return;
+      lastTrigger = now;
+      flash.classList.remove('active');
+      ring.classList.remove('active');
+      void flash.offsetWidth;
+      flash.classList.add('active');
+      ring.classList.add('active');
+    }
+
+    async function start() {
+      const video = document.querySelector('#camera-video');
+      if (!video) return;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      video.srcObject = stream;
+      await video.play();
+      const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate: 'GPU' },
+        runningMode: 'VIDEO',
+        numHands: 1,
+      });
+      requestAnimationFrame(detect);
+    }
+
+    function detect() {
+      const video = document.querySelector('#camera-video');
+      if (video && handLandmarker && video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+        lastVideoTime = video.currentTime;
+        const result = handLandmarker.detectForVideo(video, performance.now());
+        if (result.landmarks?.[0] && crossed(result.landmarks[0])) impact();
+      }
+      requestAnimationFrame(detect);
+    }
+
+    start().catch((error) => console.error('MediaPipe camera error:', error));
+  </script>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
