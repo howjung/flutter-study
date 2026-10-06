@@ -135,5 +135,5 @@ flutter test         # 위젯 테스트
 
 - 개인 GitHub 저장소: https://github.com/howjung/flutter-study (개인 학습용, 주차별 실습·과제 모음)
 - 제출 대상 폴더: `week06_notice_board/`
-- 제출 commit 링크: ______
+- 제출 commit 링크: https://github.com/howjung/flutter-study/commit/3c64623 (코드·테스트·기록이 들어간 commit. 이 링크를 적은 README 수정은 그다음 commit)
 - 제출 commit의 코드와 검증한 코드가 일치함을 확인: `lib/main.dart`와 `test/widget_test.dart`를 수정하지 않은 채 같은 commit에 포함함 (`flutter analyze` 종료 코드 0, `flutter test` 통과 후 변경 없음)
