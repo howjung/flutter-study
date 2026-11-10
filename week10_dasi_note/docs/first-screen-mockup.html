@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>다시노트 화면 예시</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* 웹앱 관리 화면 구조(SB Admin 참고): 상단바 + 왼쪽 사이드바 + 요약 카드 + 목록 카드. 밝은 테마 하나만 쓴다.
+     반응형: 800px 이상 = 사이드바 펼침 + 가운데 모달, 800px 미만 = 사이드바 접힘(☰) + 아래에서 올라오는 시트 */
+  :root {
+    --paper: #ffffff;
+    --bg: #f1f3f6;
+    --panel: #f4f5f7;
+    --ink: #1b2330;
+    --muted: #596579;
+    --line: #dde1e8;
+    --field: #8791a0;
+    --accent: #0f766e;
+    --accent-press: #0b5c55;
+    --accent-soft: #e0f0ed;
+    --amber: #b7791f;
+    --danger: #b3261e;
+    --sans: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: #e3e6ea; color: var(--ink); font-family: var(--sans); display: flex; flex-direction: column; }
+  .note { flex: none; font-size: 13px; line-height: 1.5; color: #3a4558; margin: 0; padding: 8px 16px; text-align: center; }
+  .app { position: relative; flex: 1; min-height: 0; width: 100%; max-width: 1280px; margin: 0 auto; background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
+  .ico { display: inline-flex; flex: none; }
+  .ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* 상단바 */
+  .topbar { position: relative; flex: none; display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 16px 0 8px; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .burger { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 6px; background: none; color: var(--ink); cursor: pointer; }
+  .burger svg { width: 22px; height: 22px; }
+  .burger:active { background: var(--accent-soft); }
+  h1 { margin: 0; font-weight: 700; font-size: 20px; letter-spacing: -0.02em; white-space: nowrap; }
+  .tagline { display: none; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .spacer { flex: 1; }
+  .score { font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; border: 1px solid var(--line); background: var(--panel); padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
+  .progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+  .shell { position: relative; flex: 1; min-height: 0; display: flex; }
+
+  /* 사이드바 (밝은 색) */
+  .side { flex: none; width: 240px; background: var(--paper); border-right: 1px solid var(--line); overflow-y: auto; padding: 8px 0 16px; }
+  .side-label { margin: 16px 20px 6px; font-size: 13px; font-weight: 700; letter-spacing: .02em; color: var(--muted); }
+  .nav { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 20px 0 17px; background: none; border: 0; border-left: 3px solid transparent; font: 400 15px var(--sans); color: var(--ink); text-align: left; cursor: pointer; }
+  .nav .ico { color: var(--muted); }
+  .nav[aria-current="page"], .nav[aria-current="true"] { background: var(--accent-soft); border-left-color: var(--accent); font-weight: 600; }
+  .nav[aria-current="page"] .ico, .nav[aria-current="true"] .ico { color: var(--accent); }
+  .nav:active { background: var(--accent-soft); }
+  .nav[aria-disabled="true"] { color: var(--muted); cursor: not-allowed; }
+  .nav[aria-disabled="true"] .ico { opacity: .6; }
+  .nav[aria-disabled="true"]:active { background: none; }
+  .nav .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
+  .count { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .nav.new { color: var(--accent); font-weight: 600; }
+  .nav.new .ico { color: var(--accent); }
+
+  .side-scrim { position: absolute; inset: 0; background: rgba(20, 28, 40, .45); z-index: 4; display: none; }
+  @media (max-width: 799px) {
+    .side { position: absolute; top: 0; bottom: 0; left: 0; z-index: 5; width: 270px; transform: translateX(-100%); transition: transform .18s; box-shadow: 2px 0 12px rgba(0,0,0,.12); }
+    .side-open .side { transform: none; }
+    .side-open .side-scrim { display: block; }
+  }
+  @media (min-width: 800px) { .side-closed .side { display: none; } }
+
+  /* 내용 */
+  .content { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 16px 96px; }
+  .crumb { margin: 0; font-size: 13px; color: var(--muted); }
+  .pagehead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 14px; }
+  h2.title { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  h2.title:focus { outline: none; }   /* 사이드바가 닫힐 때 포커스를 받는 자리(눈에 보이는 변화 없음) */
+
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat { background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--field); border-radius: 6px; padding: 10px 12px; }
+  .stat.todo { border-left-color: var(--amber); }
+  .stat.done { border-left-color: var(--accent); }
+  .stat .k { font-size: 13px; color: var(--muted); }
+  .stat .v { font: 600 24px var(--mono); margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  .card { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+  .card[hidden], #onboard[hidden] { display: none; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 12px 4px 16px; border-bottom: 1px solid var(--line); min-height: 52px; }
+  .card-head b { font-size: 15px; }
+  .only { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 6px; background: none; border: 0; border-radius: 6px; font: 600 14px var(--sans); color: var(--ink); cursor: pointer; }
+  .only:active { background: var(--accent-soft); }
+  .list { margin: 0; padding: 0 16px; list-style: none; }
+  .row { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row .body { flex: 1; min-width: 0; }
+  .tag { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .tag .ico svg { width: 14px; height: 14px; }
+  .tag .date { font-variant-numeric: tabular-nums; }
+  .q { margin: 4px 0 0; font-weight: 600; font-size: 16px; line-height: 1.55; word-break: keep-all; }
+  .why { margin: 8px 0 0; padding-left: 10px; border-left: 3px solid var(--line); font-size: 14px; color: var(--muted); line-height: 1.55; }
+  .why b { font-weight: 600; margin-right: 6px; color: var(--ink); }
+  .row.done .q { color: var(--muted); }
+
+  /* 체크 표시: 네모 안에 체크 (SVG) */
+  .cb { width: 24px; height: 24px; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .cb rect { stroke: var(--field); stroke-width: 2; fill: var(--paper); }
+  .cb path { stroke: #fff; stroke-width: 2.5; opacity: 0; }
+  .on .cb rect, .cb.on rect { fill: var(--accent); stroke: var(--accent); }
+  .on .cb path, .cb.on path { opacity: 1; }
+  .mark { flex: none; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--paper); border: 1px solid var(--field); border-radius: 8px; padding: 8px 4px 7px; cursor: pointer; color: var(--ink); font: 600 13px var(--sans); }
+  .mark[aria-pressed="true"] { color: var(--muted); border-color: var(--accent); background: var(--accent-soft); }
+  .mark:active { background: var(--accent-soft); }
+
+  .empty { padding: 32px 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+  .empty strong { color: var(--ink); font-size: 17px; display: block; margin-bottom: 4px; }
+  .foot { margin: 16px 0 0; font-size: 13px; color: var(--muted); }
+
+  /* 노트북이 하나도 없을 때는 요약·진행 막대·경로·추가 버튼을 숨겨 처음 사용 화면만 남긴다 (display:none이라 Tab 순서에서도 빠짐) */
+  .no-notebooks .stats, .no-notebooks .progress, .no-notebooks .crumb, .no-notebooks .add.top, .no-notebooks .dock { display: none; }
+  @media (max-width: 799px) { .no-notebooks .content { padding-bottom: 16px; } }
+
+  /* 처음 사용 화면(노트북이 하나도 없을 때) */
+  #onboard { padding: 24px 16px 20px; }
+  #onboard h3 { margin: 0 0 6px; font-size: 20px; letter-spacing: -0.02em; }
+  #onboard .sub { margin: 0 0 16px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+  .tplgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .tplcard { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 104px; padding: 14px; text-align: left; background: var(--paper); border: 1px solid var(--field); border-radius: 8px; color: var(--ink); font-family: var(--sans); cursor: pointer; }
+  .tplcard .ico { color: var(--accent); margin-bottom: 4px; }
+  .tplcard .ico svg { width: 24px; height: 24px; }
+  .tplcard b { font-size: 16px; }
+  .tplcard span.f { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .tplcard:active { background: var(--accent-soft); }
+  .onb-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
+  .link { min-height: 44px; padding: 0 4px; background: none; border: 0; font: 600 15px var(--sans); color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .link:active { color: var(--accent-press); }
+
+  /* 추가 버튼: 폰은 아래 고정, PC는 제목 줄 오른쪽 */
+  .add { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font: 600 15px var(--sans); cursor: pointer; transition: background .12s; white-space: nowrap; }
+  .add svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  .add:active { background: var(--accent-press); }
+  .add.top { display: none; }
+  .dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); background: var(--paper); border-top: 1px solid var(--line); }
+  .dock .add { width: 100%; min-height: 48px; font-size: 16px; }
+  @media (min-width: 800px) {
+    .add.top { display: inline-flex; }
+    .dock { display: none; }
+    .tagline { display: block; }
+    .content { padding: 20px 28px 28px; }
+    #onboard { padding: 32px 28px 24px; max-width: 720px; }
+    .tplgrid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  }
+
+  /* 입력 팝업 (오답/항목 추가, 새 노트북): 폰 = 아래에서 올라옴, PC = 가운데 모달 */
+  .scrim { position: absolute; inset: 0; z-index: 8; background: rgba(20, 28, 40, .5); display: none; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; background: var(--paper); padding: 20px 20px calc(16px + env(safe-area-inset-bottom)); border-radius: 14px 14px 0 0; display: none; max-height: 100%; overflow-y: auto; }
+  .open .scrim, .sheet.show { display: block; }
+  @media (min-width: 800px) {
+    .sheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: 480px; max-height: 90%; border-radius: 10px; padding: 24px; }
+  }
+  .sheet h2 { margin: 0 0 4px; font-weight: 700; font-size: 19px; }
+  fieldset { border: 0; padding: 0; margin: 12px 0 0; min-width: 0; }
+  legend, .sheet label.t { font-size: 14px; font-weight: 600; color: var(--ink); padding: 0; margin: 14px 0 6px; display: block; }
+  legend { margin-top: 0; }
+  .hint { font-size: 13px; color: var(--muted); margin: 6px 0 0; line-height: 1.45; }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opt { position: relative; cursor: pointer; font-size: 15px; }
+  .opt input { position: absolute; opacity: 0; inset: 0; margin: 0; }
+  .opt > span { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid var(--field); border-radius: 6px; background: var(--paper); }
+  .opt .ico svg { width: 16px; height: 16px; color: var(--muted); }
+  .opt input:checked + span { border: 2px solid var(--accent); padding: 0 13px; background: var(--accent-soft); font-weight: 600; }
+  .opt input:checked + span .ico svg { color: var(--accent); }
+  .opt input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .opt:active > span { background: var(--accent-soft); }
+  .sheet input[type="text"] { width: 100%; padding: 11px 12px; font: 400 16px var(--sans); color: var(--ink); border: 1px solid var(--field); background: var(--paper); border-radius: 6px; }
+  .sheet input[type="text"]::placeholder { color: #6b7686; }
+  .sheet input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  .sheet input.bad { border-color: var(--danger); }
+  .err { color: var(--danger); font-size: 14px; font-weight: 600; margin: 6px 0 0; min-height: 0; }
+  .err:empty { display: none; }
+  .ok { color: var(--accent); font-size: 14px; font-weight: 600; margin: 8px 0 0; }
+  .ok:empty { display: none; }
+  /* 버튼 강약: 저장(채움) > 저장하고 계속(테두리) > 닫기(글자만) */
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .actions button { flex: 1 1 auto; min-height: 46px; padding: 0 14px; font: 600 15px var(--sans); border-radius: 6px; cursor: pointer; border: 1px solid var(--accent); background: var(--paper); color: var(--accent); }
+  .actions button:active { background: var(--accent-soft); }
+  .actions .save { background: var(--accent); color: #fff; }
+  .actions .save:active { background: var(--accent-press); }
+  .actions .close { flex: 0 0 auto; border-color: transparent; background: none; color: var(--muted); font-weight: 600; }
+  .actions .close:active { background: var(--panel); }
+
+  .demo { margin-top: 6px; min-height: 44px; padding: 0 12px; border: 1px solid var(--field); border-radius: 6px; background: var(--paper); color: var(--ink); font: 600 13px var(--sans); cursor: pointer; }
+  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .progress i, .add, .side { transition: none; } }
+
+  /* 마우스가 있는 환경에서만 hover 표시 */
+  @media (hover: hover) {
+    .nav:not([aria-current]):not([aria-disabled="true"]):hover { background: var(--panel); }
+    .burger:hover, .only:hover { background: var(--panel); }
+    .add:hover { background: var(--accent-press); }
+    .mark:hover { background: var(--panel); }
+    .mark[aria-pressed="true"]:hover { background: #d3e8e4; }
+    .tplcard:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .opt:hover > span { background: var(--panel); }
+    .opt input:checked:hover + span { background: var(--accent-soft); }
+    .link:hover { color: var(--accent-press); }
+    .actions button:hover { background: var(--accent-soft); }
+    .actions .save:hover { background: var(--accent-press); }
+    .actions .close:hover { background: var(--panel); }
+    .demo:hover { background: var(--panel); }
+  }
+</style>
+</head>
+<body>
+
+<p class="note">PRD 화면 예시입니다. 브라우저 창 너비를 800px 위/아래로 조절하면 사이드바가 펼쳐지거나 접힙니다(☰로 열기·닫기). 처음 사용 화면에서 템플릿 카드를 눌러 보고, 노트북을 고르거나 만들고, 다시 볼 것을 추가해 보세요. 새로고침하면 처음 상태로 돌아갑니다.<br><button type="button" class="demo" id="demoEmpty">처음 사용 화면 보기</button> <button type="button" class="demo" id="demoSample">예시 데이터 채우기</button></p>
+
+<div class="app" id="app">
+  <header class="topbar">
+    <button class="burger" id="burger" aria-label="메뉴 열기·닫기" aria-controls="side" aria-expanded="false"><span class="ico" data-i="menu"></span></button>
+    <h1>다시노트</h1>
+    <span class="tagline">다시 볼 것만 모아두는 노트</span>
+    <span class="spacer"></span>
+    <div class="score" id="score" role="status" title="모든 노트북을 합친 기준입니다"></div>
+    <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+  </header>
+
+  <div class="shell" id="shell">
+    <nav class="side" id="side" aria-label="메뉴">
+      <div class="side-label">메뉴</div>
+      <button class="nav" aria-current="page"><span class="ico" data-i="list"></span><span class="name">다시 볼 것</span></button>
+      <button class="nav" aria-disabled="true"><span class="ico" data-i="review"></span><span class="name">복습 모드</span><span class="badge">준비 중</span></button>
+      <button class="nav" aria-disabled="true"><span class="ico" data-i="chart"></span><span class="name">통계</span><span class="badge">준비 중</span></button>
+      <div class="side-label">노트북</div>
+      <div id="notebookNav"></div>
+      <button class="nav new" id="newNotebookNav"><span class="ico" data-i="plus"></span><span class="name">새 노트북</span></button>
+    </nav>
+    <div class="side-scrim" id="sideScrim"></div>
+
+    <main class="content" id="content">
+      <p class="crumb" id="crumb"></p>
+      <div class="pagehead">
+        <h2 class="title" id="pageTitle" tabindex="-1">다시 볼 것</h2>
+        <button class="add top" id="fabTop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>추가</button>
+      </div>
+      <div class="stats" aria-label="요약">
+        <div class="stat"><div class="k">전체</div><div class="v" id="sAll">0</div></div>
+        <div class="stat todo"><div class="k">남음</div><div class="v" id="sTodo">0</div></div>
+        <div class="stat done"><div class="k">완료</div><div class="v" id="sDone">0</div></div>
+      </div>
+
+      <section class="card" id="onboard" hidden aria-labelledby="onbTitle">
+        <h3 id="onbTitle">무엇을 모아볼까요?</h3>
+        <p class="sub">오답, 헷갈리는 개념, 실수, 읽을거리까지. 나중에 다시 볼 것을 모아 두세요.</p>
+        <div class="tplgrid" id="tplGrid"></div>
+        <div class="onb-links">
+          <button type="button" class="link" id="onbCustom">직접 만들기(빈 노트)</button>
+          <button type="button" class="link" id="onbSample">예시 보기</button>
+        </div>
+      </section>
+
+      <section class="card" id="listCard" aria-label="항목 목록">
+        <div class="card-head">
+          <b>목록</b>
+          <button class="only" id="only" aria-pressed="false"><span id="onlyBox" aria-hidden="true"></span><span id="onlyLabel">남은 것만 보기</span></button>
+        </div>
+        <ul class="list" id="list"></ul>
+      </section>
+      <p class="foot">저장 위치: 이 화면 안(메모리). 새로고침하면 사라집니다.</p>
+    </main>
+  </div>
+
+  <div class="dock"><button class="add" id="fab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>추가</button></div>
+
+  <div class="scrim" id="scrim"></div>
+
+  <!-- 항목 추가 팝업: 고른 노트북의 템플릿에 따라 레이블이 바뀜 -->
+  <form class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" novalidate>
+    <h2 id="sheet-title">다시 볼 것 추가</h2>
+    <fieldset>
+      <legend>노트북</legend>
+      <div class="opts" id="notebookOpts"></div>
+    </fieldset>
+    <label class="t" for="fTitle" id="lblTitle">제목 (필수)</label>
+    <input type="text" id="fTitle" autocomplete="off" aria-describedby="hintTitle errTitle">
+    <p class="hint" id="hintTitle"></p>
+    <p class="err" id="errTitle" role="alert"></p>
+    <label class="t" for="fMemo" id="lblMemo">메모 (선택)</label>
+    <input type="text" id="fMemo" autocomplete="off">
+    <p class="ok" id="ok" role="status"></p>
+    <div class="actions">
+      <button type="submit" class="save">저장</button>
+      <button type="submit" data-more="1">저장하고 계속</button>
+      <button type="button" class="close" id="cancel">닫기</button>
+    </div>
+  </form>
+
+  <!-- 새 노트북 팝업: 템플릿 선택 → 이름(수정 가능) → 저장 -->
+  <form class="sheet" id="nbSheet" role="dialog" aria-modal="true" aria-labelledby="nb-title" novalidate>
+    <h2 id="nb-title">새 노트북</h2>
+    <fieldset>
+      <legend>템플릿</legend>
+      <div class="opts" id="tplOpts"></div>
+      <p class="hint" id="tplHint"></p>
+    </fieldset>
+    <label class="t" for="nbName">노트북 이름 (20자까지)</label>
+    <input type="text" id="nbName" maxlength="20" autocomplete="off" aria-describedby="errName">
+    <p class="err" id="errName" role="alert"></p>
+    <div class="actions">
+      <button type="submit" class="save">저장</button>
+      <button type="button" class="close" id="nbCancel">닫기</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  /* ---------- 템플릿: 레이블·예시 문구만 다르고 구조는 같다 ---------- */
+  const TPL = {
+    exam:    { name: "시험 오답",   icon: "exam",    title: "문제 요약", memo: "틀린 이유",     phT: "예) 임오군란 발생 연도",  phM: "예) 조약 순서와 혼동",        hint: "문제 번호나 핵심 단어만 적어도 돼요" },
+    concept: { name: "개념·용어",   icon: "concept", title: "용어",      memo: "헷갈린 점",     phT: "예) 서브쿼리",           phM: "예) 인라인 뷰와 헷갈림",      hint: "짧게 적어도 돼요" },
+    mistake: { name: "실수·회고",   icon: "mistake", title: "상황",      memo: "다음엔 이렇게", phT: "예) 발표 전날 자료를 고침", phM: "예) 전날 저녁에는 고치지 않기", hint: "짧게 적어도 돼요" },
+    reading: { name: "읽을거리",    icon: "reading", title: "제목",      memo: "저장한 이유",   phT: "예) 상태 관리 정리 글",    phM: "예) 이번 주말에 정독",        hint: "링크 대신 제목만 적어도 돼요" },
+    custom:  { name: "직접 만들기", icon: "custom",  title: "제목",      memo: "메모",          phT: "예) 다시 볼 내용",        phM: "예) 메모",                  hint: "짧게 적어도 돼요" },
+  };
+  const TPL_ORDER = ["exam", "concept", "mistake", "reading"];   // 처음 사용 화면의 카드 4개
+
+  /* ---------- 아이콘(인라인 SVG) ---------- */
+  const PATHS = {
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    review: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/>',
+    chart: '<path d="M4 20V10M10 20V4M16 20v-7M2 20h20"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    notebook: '<path d="M6 3h13v18H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M9 3v18"/>',
+    exam: '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/>',
+    concept: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',
+    mistake: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+    reading: '<path d="M6 3h12v18l-6-4-6 4z"/>',
+    custom: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  };
+  const svg = (n) => `<svg viewBox="0 0 24 24" aria-hidden="true">${PATHS[n]}</svg>`;
+  const icon = (n) => `<span class="ico" aria-hidden="true">${svg(n)}</span>`;
+  const cb = (on) => `<svg class="cb ${on ? "on" : ""}" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M8 12.5l3 3 5-6"/></svg>`;
+
+  /* ---------- 데이터 (메모리에만 저장) ---------- */
+  let filter = "all";          // "all" 또는 노트북 id(문자열)
+  let onlyTodo = false;        // 다시 볼 것만 보기
+  const linger = new Set();    // '다시 볼 것만 보기' 중 방금 완료 표시한 항목: 바로 사라지지 않고 남겨 둠(실수로 눌렀을 때 되돌리기)
+  let notebooks = [], items = [], nextId = 1, nextNotebookId = 1;   // notebook {id,name,tpl}, item {id,nb,title,memo,done,createdAt}
+  let sel = null;              // 추가 팝업에서 고른 노트북 id(문자열)
+  function loadSample() {      // 화면 확인용 예시 (실제 첫 실행은 빈 상태)
+    notebooks = [{ id: 1, name: "SQLD", tpl: "exam" }, { id: 2, name: "리눅스", tpl: "concept" }, { id: 3, name: "읽을거리", tpl: "reading" }];
+    items = [
+      { id: 4, nb: 3, title: "상태 관리 정리 글", memo: "이번 주말에 정독", done: false, createdAt: new Date(2026, 10, 10, 9, 0) },
+      { id: 3, nb: 2, title: "chmod 755", memo: "권한 숫자 계산이 헷갈림", done: true, createdAt: new Date(2026, 10, 9, 21, 0) },
+      { id: 2, nb: 1, title: "GROUP BY와 HAVING 차이", memo: "WHERE와 실행 순서 혼동", done: false, createdAt: new Date(2026, 10, 8, 20, 0) },
+      { id: 1, nb: 1, title: "서브쿼리 위치별 용어", memo: "인라인 뷰와 혼동", done: false, createdAt: new Date(2026, 10, 7, 19, 0) },
+    ];
+    nextId = 5; nextNotebookId = 4;
+  }
+  loadSample();
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const nbOf = (id) => notebooks.find((n) => String(n.id) === String(id));
+  const tplOf = (id) => TPL[(nbOf(id) || { tpl: "custom" }).tpl];
+  const fmtDate = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+  // 받침 유무에 따라 을/를 붙임 (예: 문제 요약을, 용어를)
+  const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1); return c >= 0xAC00 && c <= 0xD7A3 ? w + ((c - 0xAC00) % 28 ? a : b) : `${w}${a}(${b})`; };
+  const uniqueName = (base) => { let n = base, i = 2; while (notebooks.some((x) => x.name.toLowerCase() === n.toLowerCase())) n = `${base} ${i++}`; return n; };
+
+  document.querySelectorAll("[data-i]").forEach((el) => { el.innerHTML = svg(el.dataset.i); });
+
+  /* ---------- 사이드바 열기·닫기 ---------- */
+  const mq = window.matchMedia("(min-width: 800px)");   // true = 사이드바 기본 펼침
+  const app = $("app");
+  let sideOpen = mq.matches;
+  const behind = [...["header", "#shell", ".dock"].map((s) => app.querySelector(s)), document.querySelector(".note")];   // 팝업이 열리면 상단 안내(.note)와 데모 버튼도 Tab으로 못 가게 함
+  const setBehind = (on) => behind.forEach((el) => { el.inert = on; });
+  function applySide() {
+    app.classList.toggle("side-open", sideOpen && !mq.matches);
+    app.classList.toggle("side-closed", !sideOpen && mq.matches);
+    $("burger").setAttribute("aria-expanded", String(sideOpen));
+    $("side").inert = !sideOpen;
+  }
+  $("burger").onclick = () => { sideOpen = !sideOpen; applySide(); };
+  $("sideScrim").onclick = () => { sideOpen = false; applySide(); };
+  mq.addEventListener("change", () => { sideOpen = mq.matches; closeDialog(true); applySide(); render(); });
+  const closeSideOnPhone = () => { if (!mq.matches) { sideOpen = false; applySide(); } };
+
+  /* ---------- 화면 그리기 ---------- */
+  function render() {
+    if (filter !== "all" && !nbOf(filter)) filter = "all";
+    const count = (id) => items.filter((i) => id === "all" || String(i.nb) === id).length;
+    const nav = [...(notebooks.length ? [["all", "notebook", "전체"]] : []), ...notebooks.map((n) => [String(n.id), TPL[n.tpl].icon, n.name])];   // 노트북이 없으면 '전체 0'도 숨김
+    app.classList.toggle("no-notebooks", notebooks.length === 0);
+    $("notebookNav").innerHTML = nav.map(([k, ic, n]) =>
+      `<button class="nav" data-f="${k}" ${filter === k ? 'aria-current="true"' : ""}>${icon(ic)}<span class="name">${esc(n)}</span><span class="count">${count(k)}</span></button>`).join("");
+    renderSheetFields();
+
+    const doneAll = items.filter((i) => i.done).length;
+    $("score").textContent = `전체 완료 ${doneAll} / ${items.length}`;
+    $("bar").style.width = items.length ? `${(doneAll / items.length) * 100}%` : "0";
+
+    const onboarding = notebooks.length === 0;
+    $("onboard").hidden = !onboarding; $("listCard").hidden = onboarding;
+    $("tplGrid").innerHTML = TPL_ORDER.map((k) => `<button type="button" class="tplcard" data-tpl="${k}">${icon(TPL[k].icon)}<b>${TPL[k].name}</b><span class="f">${TPL[k].title} / ${TPL[k].memo}</span></button>`).join("");
+
+    const inNb = items.filter((i) => filter === "all" || String(i.nb) === filter);
+    const todo = inNb.filter((i) => !i.done).length;
+    $("crumb").textContent = `다시 볼 것 › ${filter === "all" ? "전체" : nbOf(filter).name}`;
+    $("sAll").textContent = inNb.length; $("sTodo").textContent = todo; $("sDone").textContent = inNb.length - todo;
+    $("only").setAttribute("aria-pressed", onlyTodo);
+    $("onlyBox").innerHTML = cb(onlyTodo);
+    $("onlyLabel").textContent = `남은 것만 보기 (${todo})`;
+    const shown = inNb.filter((i) => !onlyTodo || !i.done || linger.has(i.id));
+    $("list").innerHTML = shown.length ? shown.map((i) => {
+      const t = tplOf(i.nb);
+      return `
+      <li class="row ${i.done ? "done" : ""}">
+        <div class="body">
+          <div class="tag">${icon(t.icon)}<span>${esc(nbOf(i.nb).name)}</span><span aria-hidden="true">·</span><span class="date">${fmtDate(i.createdAt)}</span></div>
+          <p class="q">${esc(i.title)}</p>
+          ${i.memo ? `<p class="why"><b>${t.memo}:</b>${esc(i.memo)}</p>` : ""}
+        </div>
+        <button class="mark ${i.done ? "on" : ""}" data-id="${i.id}" aria-pressed="${i.done}"
+          aria-label="${esc(i.title)} 완료">
+          ${cb(i.done)}${i.done ? "완료" : "남음"}
+        </button>
+      </li>`; }).join("")
+      : (inNb.length
+          ? `<li class="empty"><strong>남은 것을 모두 끝냈어요</strong>'남은 것만 보기'를 끄면 전체를 볼 수 있어요.</li>`
+          : `<li class="empty"><strong>이 노트북에는 아직 항목이 없어요</strong>'추가'를 눌러 첫 항목을 넣어 보세요.</li>`);
+  }
+
+  /* ---------- 사이드바·카드·목록 클릭 ---------- */
+  $("notebookNav").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-f]"); if (!b) return;
+    filter = b.dataset.f; linger.clear();
+    if (filter !== "all") sel = filter;   // 추가 팝업에서 지금 보는 노트북이 미리 선택됨
+    const closing = !mq.matches;          // 폰: 사이드바가 닫히며 inert가 되므로 포커스를 본문 제목으로 보냄
+    closeSideOnPhone(); render();
+    if (closing) $("pageTitle").focus();
+    else { const again = $("notebookNav").querySelector(`[data-f="${filter}"]`); if (again) again.focus(); }   // render()가 목록을 새로 만들었으므로 포커스를 되돌림
+  });
+  document.querySelectorAll('.nav[aria-disabled="true"]').forEach((b) => b.addEventListener("click", (e) => e.preventDefault()));   // 준비 중: 화면이 바뀌지 않음
+  $("list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-id]"); if (!b) return;
+    const it = items.find((i) => i.id === Number(b.dataset.id));
+    if (onlyTodo) linger.add(it.id);
+    it.done = !it.done; render();
+    const again = $("list").querySelector(`[data-id="${it.id}"]`); if (again) again.focus();
+  });
+  $("only").addEventListener("click", () => { onlyTodo = !onlyTodo; linger.clear(); render(); });
+
+  /* ---------- 팝업 공통: 열기·닫기·포커스 ---------- */
+  let current = null, opener = null, addFlow = false;
+  function openDialog(el, focusId) {
+    opener = document.activeElement;
+    current = el; app.classList.add("open"); el.classList.add("show"); setBehind(true);
+    $(focusId).focus();
+  }
+  function closeDialog(silent) {
+    if (!current) return;
+    current.classList.remove("show"); app.classList.remove("open"); setBehind(false); current = null; clearErrors();
+    if (silent) return;
+    const fallback = mq.matches ? $("fabTop") : $("fab");
+    let t = opener && document.contains(opener) && !opener.closest("[inert]") && opener !== document.body ? opener : fallback;
+    if (!t.offsetParent) t = $("pageTitle");   // 추가 버튼이 숨겨진 처음 사용 화면에서는 본문 제목으로
+    t.focus();
+  }
+  $("scrim").onclick = () => closeDialog();
+  $("cancel").onclick = () => closeDialog();
+  $("nbCancel").onclick = () => closeDialog();
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (current) closeDialog();
+    else if (sideOpen && !mq.matches) { sideOpen = false; applySide(); }
+  });
+  const clearErrors = () => {
+    for (const id of ["errTitle", "errName", "ok"]) $(id).textContent = "";
+    for (const id of ["fTitle", "nbName"]) { $(id).classList.remove("bad"); $(id).removeAttribute("aria-invalid"); }
+  };
+  const fail = (errId, inputId, msg) => {   // 저장하지 않고 안내, 입력한 다른 값은 유지
+    $(errId).textContent = msg;
+    $(inputId).classList.add("bad"); $(inputId).setAttribute("aria-invalid", "true"); $(inputId).focus();
+  };
+
+  /* ---------- 항목 추가 팝업 ---------- */
+  function renderSheetFields() {
+    if (!notebooks.length) { sel = null; return; }
+    if (sel == null || !nbOf(sel)) sel = String(notebooks[0].id);
+    $("notebookOpts").innerHTML = notebooks.map((n) =>
+      `<label class="opt"><input type="radio" name="nb" value="${n.id}" ${sel === String(n.id) ? "checked" : ""}><span>${icon(TPL[n.tpl].icon)}${esc(n.name)}</span></label>`).join("");
+    const t = tplOf(sel);                                  // 고른 노트북의 템플릿 레이블로 즉시 바뀜
+    $("lblTitle").textContent = `${t.title} (필수)`;
+    $("lblMemo").textContent = `${t.memo} (선택)`;
+    $("fTitle").placeholder = t.phT; $("fMemo").placeholder = t.phM;
+    $("hintTitle").textContent = t.hint;
+  }
+  $("notebookOpts").addEventListener("change", (e) => { sel = e.target.value; clearErrors(); renderSheetFields(); });
+  function openAdd() {
+    if (!notebooks.length) { openNotebookDialog(true); return; }   // 노트북이 없으면 먼저 만든다
+    if (filter !== "all") sel = filter;
+    renderSheetFields(); openDialog($("sheet"), "fTitle");
+  }
+  $("fab").onclick = openAdd;
+  $("fabTop").onclick = openAdd;
+
+  $("sheet").addEventListener("submit", (e) => {
+    e.preventDefault(); clearErrors();
+    const t = tplOf(sel);
+    const title = $("fTitle").value.trim();
+    if (!title) return fail("errTitle", "fTitle", `${josa(t.title, "을", "를")} 입력해 주세요`);
+    if (filter !== "all" && filter !== sel) filter = sel;   // 방금 적은 항목이 목록에 보이도록 그 노트북으로 이동
+    items.unshift({ id: nextId++, nb: Number(sel), title, memo: $("fMemo").value.trim(), done: false, createdAt: new Date() });
+    $("fTitle").value = ""; $("fMemo").value = "";   // 노트북 선택은 유지
+    render();
+    if (e.submitter && e.submitter.dataset.more) {
+      $("ok").textContent = `추가했어요 (전체 ${items.length}개)`;
+      $("fTitle").focus();
+    } else closeDialog();
+  });
+
+  /* ---------- 새 노트북 팝업 / 처음 사용 카드 ---------- */
+  let tplSel = "exam", nameDirty = false;
+  function renderTplOpts() {
+    $("tplOpts").innerHTML = [...TPL_ORDER, "custom"].map((k) =>
+      `<label class="opt"><input type="radio" name="tpl" value="${k}" ${tplSel === k ? "checked" : ""}><span>${icon(TPL[k].icon)}${TPL[k].name}</span></label>`).join("");
+    const t = TPL[tplSel];
+    $("tplHint").textContent = tplSel === "custom" ? "이름만 정하면 되는 빈 노트입니다. 항목은 제목 / 메모로 적습니다." : `항목은 ${t.title} / ${t.memo}로 적습니다.`;
+  }
+  $("tplOpts").addEventListener("change", (e) => {
+    tplSel = e.target.value; renderTplOpts();
+    if (!nameDirty) $("nbName").value = tplSel === "custom" ? "" : uniqueName(TPL[tplSel].name);   // 이름은 템플릿 이름이 기본값, 고칠 수 있음
+  });
+  $("nbName").addEventListener("input", () => { nameDirty = true; });
+  function openNotebookDialog(fromAdd, tpl) {
+    addFlow = fromAdd; tplSel = tpl || "exam"; nameDirty = false; clearErrors();
+    $("nbName").value = tplSel === "custom" ? "" : uniqueName(TPL[tplSel].name);
+    renderTplOpts(); openDialog($("nbSheet"), "nbName");
+    $("nbName").select();
+  }
+  $("newNotebookNav").onclick = () => { closeSideOnPhone(); openNotebookDialog(false); };
+  $("onbCustom").onclick = () => openNotebookDialog(true, "custom");
+
+  function createNotebook(name, tpl) {
+    const n = { id: nextNotebookId++, name, tpl };
+    notebooks.push(n); sel = String(n.id); filter = sel; linger.clear(); return n;
+  }
+  $("nbSheet").addEventListener("submit", (e) => {
+    e.preventDefault(); clearErrors();
+    const name = $("nbName").value.trim();
+    if (!name) return fail("errName", "nbName", "노트북 이름을 입력해 주세요");
+    if (notebooks.some((n) => n.name.toLowerCase() === name.toLowerCase())) return fail("errName", "nbName", "이미 있는 노트북이에요");
+    createNotebook(name, tplSel); render();
+    if (addFlow) { closeDialog(true); openAdd(); }   // 처음 사용·추가 흐름에서는 곧바로 첫 항목 입력으로 이어짐
+    else closeDialog();
+  });
+  // 처음 사용 화면의 템플릿 카드: 노트북을 자동으로 만들고 곧바로 첫 항목 입력 팝업을 연다(이름 짓기 생략)
+  $("tplGrid").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tpl]"); if (!b) return;
+    createNotebook(uniqueName(TPL[b.dataset.tpl].name), b.dataset.tpl); render();
+    openDialog($("sheet"), "fTitle");
+  });
+
+  /* ---------- 데모용: 처음 사용 화면 / 예시 데이터 ---------- */
+  const resetState = () => { filter = "all"; onlyTodo = false; linger.clear(); sel = null; closeDialog(true); };
+  $("demoEmpty").onclick = () => { resetState(); notebooks = []; items = []; nextId = 1; nextNotebookId = 1; render(); };
+  const fillSample = () => { resetState(); loadSample(); render(); };
+  $("demoSample").onclick = fillSample;
+  $("onbSample").onclick = fillSample;
+
+  applySide();
+  render();
+</script>
+</body>
+</html>
