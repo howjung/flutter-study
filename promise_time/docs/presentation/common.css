@@ -1,0 +1,7 @@
+:root{--bg:#F3F5FA;--ink:#1B2433;--sub:#5B6577;--line:#DAD9E8;--indigo:#4A56A6;--navy:#22314F;--late:#9B1C1C;--lateBg:#FCD9D5;--soft:#E1E0FF;--card:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1920px;height:1080px;background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif;font-weight:400;overflow:hidden;position:relative}
+.tag{position:absolute;top:44px;right:64px;background:var(--navy);color:#fff;padding:10px 24px;border-radius:999px;font-size:26px;font-weight:500}
+.foot{position:absolute;left:72px;bottom:36px;font-size:26px;color:var(--sub)}
+h1{font-weight:700;letter-spacing:-1.5px}
+.brand{color:var(--indigo);font-weight:700;font-size:32px;margin-bottom:10px}
