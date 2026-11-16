@@ -1,6 +1,6 @@
 # 첫 화면 구상과 확인 기록
 
-> **상태: 11주차 변경(v12) 구현됨, 본인 환경 확인 전.** v11 화면에서는 `flutter analyze`·`flutter test`(13개) 통과, 아이폰 실기기(디버그)에서 AC1~AC6 통과. **v12 변경 후 `flutter analyze`·`flutter test`·화면 확인은 아직 미실행**, Chrome 환경도 미실행. "직접 확인" 표에는 실제로 확인한 것만 `통과`로 적고, 기대 결과를 실제 결과로 쓰지 않습니다. 근거 스크린샷은 `docs/evidence/`에 있습니다.
+> **상태: 11주차 변경(v12) 구현됨, 화면 확인 전.** v11 화면에서는 `flutter analyze`·`flutter test`(13개) 통과, 아이폰 실기기(디버그)에서 AC1~AC6 통과. **v12 변경 후 `flutter analyze`·`flutter test`는 본인 환경에서 통과 (본인 보고, 출력 미첨부)**, 화면 확인(AC1~AC7)은 아직 미실행, Chrome 환경도 미실행. "직접 확인" 표에는 실제로 확인한 것만 `통과`로 적고, 기대 결과를 실제 결과로 쓰지 않습니다. 근거 스크린샷은 `docs/evidence/`에 있습니다.
 > 숫자(77분 등)는 설명용 예시입니다. `docs/PRD.md`와 같은 내용을 기준으로 합니다. **기준 PRD 버전: v12** (PRD가 바뀌면 이 문서도 맞추고 버전을 갱신)
 
 ## 화면 구상
@@ -70,7 +70,7 @@
 
 - flutter analyze의 명령·실제 결과: `flutter analyze` (본인 맥북, 1회차) **3 issues**: info 2개 (`lib/time_gap.dart:2:1 dangling_library_doc_comments`, `lib/time_gap_test.dart:1:8 depend_on_referenced_packages`), error 1개 (`test/widget_test.dart:16:35 creation_with_non_type`, 'MyApp' isn't a class). `main.dart`에 대한 보고는 없음. **2회차(수정 후, 본인 맥북): `No issues found!` (4.6s)**
 - 자동 검사를 수행했다면 방법·실제 결과: **계산 함수만 검증함.** 이 세션에서 Dart 3.14.0과 `package:test`로 `test/time_gap_test.dart`와 같은 13개 테스트를 실행해 **13개 모두 통과** (+77, −103, +100, +3, −2, 0, 12시간 양방향 +720, 12시간+1분 −719, 문구, `HH:mm` 형식). 이는 제 세션 환경의 결과이며, 본인 맥북의 `flutter test`(1회차)는 **실패**: 기본 생성 `test/widget_test.dart`가 남아 있어 `MyApp` 컴파일 오류로 로드에 실패했고, 우리 단위 테스트는 실행되지 못함 (테스트 파일이 `lib/`에 잘못 놓여 있기도 했음). **2회차(수정 후, 본인 맥북): `flutter test` 13개 모두 통과 (`+13: All tests passed!`)** — 자정 경계 -103, +100, 12시간 양방향 +720, 12시간+1분 -719, 0분, 문구, `HH:mm` 형식 포함 아래 표(화면 조작)는 본인이 Chrome에서 직접 확인해야 하므로 모두 `미실행`
-- **v12 자동 검사 (이 세션, Dart 3.14.0 + `package:test`, 순수 Dart 부분만)**: `dart analyze` 문제 없음, 테스트 **27개 통과** (기존 13 + 신규 14). **`main.dart`는 Flutter가 없어 분석·실행하지 못함. 본인 맥북의 `flutter analyze`·`flutter test`·화면 확인은 미실행**
+- **v12 자동 검사 (이 세션, Dart 3.14.0 + `package:test`, 순수 Dart 부분만)**: `dart analyze` 문제 없음, 테스트 **27개 통과** (기존 13 + 신규 14). **`main.dart`는 Flutter가 없어 이 세션에서는 분석·실행하지 못함.** 본인 맥북: **`flutter analyze`·`flutter test` 통과 (본인 보고, 출력을 받지 못해 테스트 개수 등 세부는 미확인)**. 화면 확인은 미실행
 - 실행 환경·확인 시점·확인한 커밋: Chrome(웹), `flutter run -d chrome`, `localhost:49999` (본인이 보낸 스크린샷 기준, 확인 시각·커밋은 미기록)
 - **아이폰 실기기 실행 확인:** 아이폰(iOS 27.2, Xcode 26.3, 인텔 맥북)에서 `flutter run -d iiphone`으로 **디버그 빌드가 실행됨** (스크린샷의 DEBUG 배너로 확인). 기록 목록 스크린샷(IMG_8085.png)에 4건이 최신순으로 표시됨 (맨 위 출근 17:00 → 17:00 맞췄어요, 그다음 출근 17:03 3분 늦었어요, 취침 23:40 103분 일찍, 취침 02:40 77분 늦었어요). 기록은 AC2→AC3→AC4→AC6 순서로 한 것으로 목록 순서와 일치. AC1은 `evidence/IMG_8078.png`로, AC5와 시각 선택기(24시간제)는 `IMG_8079`~`IMG_8081`로 확인함 (판정은 아래 표 참고)
 - 임의 입력 1건 확인 (AC 근거 아님): 종류 취침(기본), 목표 02:21, 실제 17:35 → 화면 "526분 일찍 했어요", 목록에 `취침 · 목표 02:21 · 실제 17:35 · 526분 일찍 했어요` 1건. 규칙 계산(914분 → 914−1440 = −526)과 일치함을 제가 계산으로 대조. **AC1~AC6의 지정 입력으로는 아직 확인하지 않음**
