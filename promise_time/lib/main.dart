@@ -397,13 +397,19 @@ class _RecordTile extends StatelessWidget {
         side: BorderSide(color: scheme.outlineVariant),
       ),
       child: ListTile(
+        // 가장 긴 줄("출근 · 목표 17:00 · 실제 17:00 · 목표 시각에 맞췄어요")이 폭 480에서
+        // "요" 한 글자만 아래로 떨어지지 않게, 글자를 한 단계 줄이고 아이콘과의 간격을 좁힌다.
+        horizontalTitleGap: 12,
         leading: Icon(
           record.kind == RecordKind.bedtime
               ? Icons.bedtime_outlined
               : Icons.work_outline,
           color: scheme.primary,
         ),
-        title: Text(record.summary),
+        title: Text(
+          record.summary,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       ),
     );
   }
