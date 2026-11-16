@@ -1,7 +1,10 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:flutter/material.dart';
 
 import 'gap_record.dart';
 import 'time_gap.dart';
+import 'time_wheel_sheet.dart';
 
 // 약속 시각 기록 — 10주차 첫 화면 + 11주차 기록 목록 정리 + 12주차 발표용 화면 정리
 // 범위: 종류 선택 -> 목표·실제 시각 선택 -> 차이 표시 -> 이번 실행 중 기록 목록
@@ -16,8 +19,24 @@ const Color _background = Color(0xFFF3F5FA);
 
 void main() => runApp(const PromiseTimeApp());
 
+/// 마우스로도 휠을 끌어서 돌릴 수 있게 한다. (웹·데스크톱의 기본값은 마우스 끌기가 꺼져 있음)
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.trackpad,
+      };
+}
+
 class PromiseTimeApp extends StatelessWidget {
-  const PromiseTimeApp({super.key});
+  /// [timePicker]를 따로 주지 않으면 아래에서 올라오는 휠 선택기를 쓴다.
+  const PromiseTimeApp({super.key, this.timePicker});
+
+  final TimePicker? timePicker;
 
   @override
   Widget build(BuildContext context) {
@@ -25,18 +44,22 @@ class PromiseTimeApp extends StatelessWidget {
       title: '약속 시각 기록',
       // 발표 캡처에서 오른쪽 위 DEBUG 리본이 보이지 않게 한다. (디버그 실행에서도 숨김)
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const _AppScrollBehavior(),
       theme: ThemeData(
         colorSchemeSeed: _seed,
         useMaterial3: true,
         scaffoldBackgroundColor: _background,
       ),
-      home: const HomePage(),
+      home: HomePage(timePicker: timePicker ?? pickTimeWithWheel),
     );
   }
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, required this.timePicker});
+
+  /// 시각을 고르는 방법. 기본은 휠 선택기이고, 테스트에서는 가짜로 바꿔 끼운다.
+  final TimePicker timePicker;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -53,26 +76,15 @@ class _HomePageState extends State<HomePage> {
   String? error; // 입력 안내(오류) 문구
   final RecordBook recordBook = RecordBook(); // 이번 실행 중 기록 (최신이 맨 앞)
 
-  // 시각 선택기: 24시간제로 강제해 23:40 같은 값을 고르기 쉽게 한다.
-  Future<TimeOfDay?> _pickTime(TimeOfDay? current) {
-    return showTimePicker(
-      context: context,
-      initialTime: current ?? TimeOfDay.now(),
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child!,
-      ),
-    );
-  }
-
+  // 시각 선택: 아래에서 올라오는 24시간제 휠 선택기(time_wheel_sheet.dart)를 연다.
   Future<void> _selectTarget() async {
-    final picked = await _pickTime(target);
+    final picked = await widget.timePicker(context, target, '정한 시각 선택');
     if (picked == null || !mounted) return; // 취소했거나 화면이 사라진 경우
     setState(() => target = picked);
   }
 
   Future<void> _selectActual() async {
-    final picked = await _pickTime(actual);
+    final picked = await widget.timePicker(context, actual, '실제 시각 선택');
     if (picked == null || !mounted) return;
     setState(() => actual = picked);
   }

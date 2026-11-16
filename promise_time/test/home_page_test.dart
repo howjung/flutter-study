@@ -3,13 +3,29 @@ import 'package:flutter_test/flutter_test.dart';
 // 주의: 프로젝트 이름이 promise_time이 아니면 아래 import의 이름을 바꿔야 한다.
 import 'package:promise_time/main.dart';
 
-// 화면 흐름 테스트: 디자인을 바꿔도 AC가 보는 문구와 동작이 그대로인지 확인한다.
-// 시각 선택기는 키보드 입력 모드로 바꿔 시·분을 직접 입력한다.
+// 화면 흐름 테스트: 디자인·선택기를 바꿔도 AC가 보는 문구와 동작이 그대로인지 확인한다.
+// 시각 선택기는 정해 둔 값을 돌려주는 가짜로 바꿔 끼운다.
+// (실제 휠 선택기는 time_wheel_sheet_test.dart에서 따로 확인한다.)
 
 const String guide = '오늘 정한 시각과 실제로 한 시각을 선택해 주세요';
 const String missing = '목표 시각과 실제 시각을 모두 입력해 주세요';
 const String targetLabel = '오늘 정한 시각은?';
 const String actualLabel = '실제로 한 시각은?';
+
+/// 다음에 시각 선택기가 돌려줄 값. null이면 "취소"한 것과 같다.
+TimeOfDay? nextPick;
+
+/// 가장 최근에 시각 선택기가 받은 제목 (칸마다 다른 제목이 전달되는지 확인용)
+String? lastTitle;
+
+Future<TimeOfDay?> fakePicker(
+  BuildContext context,
+  TimeOfDay? current,
+  String title,
+) async {
+  lastTitle = title;
+  return nextPick;
+}
 
 Future<void> pickTime(
   WidgetTester tester,
@@ -17,14 +33,8 @@ Future<void> pickTime(
   int hour,
   int minute,
 ) async {
+  nextPick = TimeOfDay(hour: hour, minute: minute);
   await tester.tap(find.text(label));
-  await tester.pumpAndSettle();
-  await tester.tap(find.byIcon(Icons.keyboard_outlined)); // 키보드 입력 모드
-  await tester.pumpAndSettle();
-  final fields = find.byType(TextField);
-  await tester.enterText(fields.at(0), hour.toString().padLeft(2, '0'));
-  await tester.enterText(fields.at(1), minute.toString().padLeft(2, '0'));
-  await tester.tap(find.text('OK'));
   await tester.pumpAndSettle();
 }
 
@@ -41,7 +51,8 @@ Future<void> startApp(WidgetTester tester) async {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  await tester.pumpWidget(const PromiseTimeApp());
+  nextPick = null;
+  await tester.pumpWidget(const PromiseTimeApp(timePicker: fakePicker));
   await tester.pumpAndSettle();
 }
 
@@ -91,6 +102,35 @@ void main() {
     await record(tester);
     expect(find.text(missing), findsOneWidget);
     expect(find.text('이번 실행 중 기록 목록 · 0건'), findsOneWidget);
+  });
+
+  testWidgets('칸마다 다른 제목으로 선택기를 연다', (tester) async {
+    await startApp(tester);
+
+    await tester.tap(find.text(targetLabel));
+    await tester.pumpAndSettle();
+    expect(lastTitle, '정한 시각 선택');
+
+    await tester.tap(find.text(actualLabel));
+    await tester.pumpAndSettle();
+    expect(lastTitle, '실제 시각 선택');
+  });
+
+  testWidgets('시각 선택을 취소하면 값이 바뀌지 않는다', (tester) async {
+    await startApp(tester);
+
+    nextPick = null; // 취소
+    await tester.tap(find.text(targetLabel));
+    await tester.pumpAndSettle();
+    expect(find.text('선택 안 함'), findsNWidgets(2));
+
+    await pickTime(tester, targetLabel, 1, 23);
+    expect(find.text('01:23'), findsOneWidget);
+
+    nextPick = null; // 다시 취소해도 01:23 유지
+    await tester.tap(find.text(targetLabel));
+    await tester.pumpAndSettle();
+    expect(find.text('01:23'), findsOneWidget);
   });
 
   testWidgets('AC2·AC3·AC4·AC6 차례로 기록하면 건수가 1→2→3→4, 최신이 위', (tester) async {
@@ -146,7 +186,11 @@ void main() {
       for (final l in lines) tester.getTopLeft(find.text(l)).dy,
     ];
     for (var i = 0; i < ys.length - 1; i++) {
-      expect(ys[i], lessThan(ys[i + 1]), reason: '${lines[i]} 가 ${lines[i + 1]} 보다 위에 있어야 함');
+      expect(
+        ys[i],
+        lessThan(ys[i + 1]),
+        reason: '${lines[i]} 가 ${lines[i + 1]} 보다 위에 있어야 함',
+      );
     }
   });
 
@@ -163,17 +207,5 @@ void main() {
       find.text('취침 · 목표 01:23 · 실제 02:40 · 77분 늦었어요'),
       findsNWidgets(2),
     );
-  });
-
-  testWidgets('시각 선택기는 24시간제(오전/오후 없음)', (tester) async {
-    await startApp(tester);
-
-    await tester.tap(find.text(targetLabel));
-    await tester.pumpAndSettle();
-    expect(find.text('OK'), findsOneWidget); // 선택기가 실제로 열렸는지
-    expect(find.text('AM'), findsNothing);
-    expect(find.text('PM'), findsNothing);
-    // 다이얼 숫자는 직접 그린 그림이라 글자로 찾을 수 없다.
-    // 24시간제(23시 입력 가능)는 위 AC3 테스트의 23:40 입력이 확인한다.
   });
 }
