@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'gap_record.dart';
 import 'time_gap.dart';
 
-// 약속 시각 기록 — 10주차 첫 화면 (기준: week10/PRD.md v8)
+// 약속 시각 기록 — 10주차 첫 화면 + 11주차 기록 목록 정리 (기준: docs/PRD.md)
 // 범위: 종류 선택 -> 목표·실제 시각 선택 -> 차이 표시 -> 이번 실행 중 기록 목록
+// 역할 분리: 입력 검증은 이 화면(main.dart)이 하고, 목록 규칙은 RecordBook이 맡는다.
 // 하지 않는 것: 저장, 알림, 날짜 입력, 지킴 판정, 여러 화면, 서버, 추가 패키지
 
 void main() => runApp(const PromiseTimeApp());
@@ -21,21 +23,6 @@ class PromiseTimeApp extends StatelessWidget {
   }
 }
 
-/// 기록 한 건. 앱을 다시 실행하면 사라진다(메모리에만 보관).
-class GapRecord {
-  const GapRecord({
-    required this.kind,
-    required this.target,
-    required this.actual,
-    required this.message,
-  });
-
-  final String kind; // 취침 / 출근 (목록 구분용 이름표, 계산에는 영향 없음)
-  final String target; // "HH:mm"
-  final String actual; // "HH:mm"
-  final String message; // 예: "77분 늦었어요"
-}
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -48,12 +35,12 @@ class _HomePageState extends State<HomePage> {
   static const String missingMessage = '목표 시각과 실제 시각을 모두 입력해 주세요';
 
   // ----- 상태 -----
-  String kind = '취침'; // 기본값 취침 (PRD v7 확정)
+  RecordKind kind = RecordKind.bedtime; // 기본값 취침 (PRD v7 확정)
   TimeOfDay? target; // 선택 전에는 null
   TimeOfDay? actual; // 선택 전에는 null
   String? result; // 가장 최근 결과 문구
   String? error; // 입력 안내(오류) 문구
-  final List<GapRecord> records = []; // 이번 실행 중 기록 (최신이 맨 앞)
+  final RecordBook recordBook = RecordBook(); // 이번 실행 중 기록 (최신이 맨 앞)
 
   // 시각 선택기: 24시간제로 강제해 23:40 같은 값을 고르기 쉽게 한다.
   Future<TimeOfDay?> _pickTime(TimeOfDay? current) {
@@ -79,7 +66,7 @@ class _HomePageState extends State<HomePage> {
     setState(() => actual = picked);
   }
 
-  // "기록" 버튼: 입력 검증 -> 차이 계산 -> 상태 갱신
+  // "기록" 버튼: 입력 검증(화면) -> 완성된 기록 만들기 -> 목록에 추가(RecordBook)
   void _record() {
     final t = target;
     final a = actual;
@@ -90,25 +77,18 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final gap = timeGapMinutes(
-      toMinutes(t.hour, t.minute),
-      toMinutes(a.hour, a.minute),
+    // 검증을 통과한 값으로만 GapRecord를 만든다. 만든 뒤에는 값이 바뀌지 않는다.
+    final record = GapRecord(
+      kind: kind,
+      targetMin: toMinutes(t.hour, t.minute),
+      actualMin: toMinutes(a.hour, a.minute),
     );
-    final message = gapMessage(gap);
 
     setState(() {
       error = null;
-      result = message;
+      result = record.message;
       // 최신 기록을 맨 앞에 추가. 선택한 시각은 그대로 유지한다.
-      records.insert(
-        0,
-        GapRecord(
-          kind: kind,
-          target: formatHm(t.hour, t.minute),
-          actual: formatHm(a.hour, a.minute),
-          message: message,
-        ),
-      );
+      recordBook.add(record);
     });
   }
 
@@ -126,10 +106,10 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 16),
 
             // R1 종류 선택 (기본: 취침)
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: '취침', label: Text('취침')),
-                ButtonSegment(value: '출근', label: Text('출근')),
+            SegmentedButton<RecordKind>(
+              segments: [
+                for (final k in RecordKind.values)
+                  ButtonSegment(value: k, label: Text(k.label)),
               ],
               selected: {kind},
               onSelectionChanged: (s) => setState(() => kind = s.first),
@@ -170,20 +150,21 @@ class _HomePageState extends State<HomePage> {
                 child: Text(result!, style: textTheme.headlineSmall),
               ),
 
-            // R3 기록 목록
+            // R3 기록 목록. 건수는 별도 값 없이 recordBook.count에서 바로 만든다.
             const SizedBox(height: 24),
-            Text('이번 실행 중 기록 목록', style: textTheme.titleMedium),
+            Text(
+              '이번 실행 중 기록 목록 · ${recordBook.count}건',
+              style: textTheme.titleMedium,
+            ),
             const Text('앱을 다시 실행하면 사라져요'),
             const SizedBox(height: 8),
-            if (records.isEmpty)
+            if (recordBook.count == 0)
               const Text('아직 기록이 없어요')
             else
-              for (final r in records)
+              for (final r in recordBook.items)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    '${r.kind} · 목표 ${r.target} · 실제 ${r.actual} · ${r.message}',
-                  ),
+                  title: Text(r.summary),
                 ),
           ],
         ),
