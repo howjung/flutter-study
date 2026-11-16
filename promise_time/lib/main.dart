@@ -23,6 +23,8 @@ class PromiseTimeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '약속 시각 기록',
+      // 발표 캡처에서 오른쪽 위 DEBUG 리본이 보이지 않게 한다. (디버그 실행에서도 숨김)
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorSchemeSeed: _seed,
         useMaterial3: true,
