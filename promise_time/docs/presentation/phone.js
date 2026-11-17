@@ -19,5 +19,5 @@ function appScreen(o){
 }
 function alarmScreen(){
   const r=(t,d)=>`<div class=ar><div class=t>${t}</div><div class=d>${d}</div></div>`;
-  return `<div class=al><h2>알람</h2>${r('07:00','월, 화, 수, 목, 금')}${r('07:10','월, 화, 수, 목, 금')}${r('08:30','토, 일')}${r('22:30','매일')}}</div>`;
+  return `<div class=al><h2>알람</h2>${r('07:00','월, 화, 수, 목, 금')}${r('07:10','월, 화, 수, 목, 금')}${r('08:30','토, 일')}${r('22:30','매일')}</div>`;
 }
