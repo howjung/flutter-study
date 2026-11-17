@@ -5,3 +5,7 @@ body{width:1920px;height:1080px;background:var(--bg);color:var(--ink);font-famil
 .foot{position:absolute;left:72px;bottom:36px;font-size:26px;color:var(--sub)}
 h1{font-weight:700;letter-spacing:-1.5px}
 .brand{color:var(--indigo);font-weight:700;font-size:32px;margin-bottom:10px}
+.phone{background:#fff;border:12px solid #1B2433;border-radius:56px;overflow:hidden;box-shadow:0 24px 50px rgba(27,36,51,.25)}
+.phone img{display:block;width:100%}
+.cap{font-size:36px;font-weight:700;text-align:center;margin-bottom:22px}
+.cap small{display:block;font-size:26px;font-weight:400;color:var(--sub);margin-top:6px}
